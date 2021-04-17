@@ -1,35 +1,66 @@
 const router = require("express").Router();
-const Transaction = require("../models/transaction.js");
+const Workout = require("../models/workout.js");
+const path = require("path");
 
-router.post("/api/transaction", ({ body }, res) => {
-  Transaction.create(body)
-    .then(dbTransaction => {
-      res.json(dbTransaction);
-    })
-    .catch(err => {
-      res.status(400).json(err);
-    });
+
+//HTML routes
+router.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "../public/index.html"));
 });
 
-router.post("/api/transaction/bulk", ({ body }, res) => {
-  Transaction.insertMany(body)
-    .then(dbTransaction => {
-      res.json(dbTransaction);
-    })
-    .catch(err => {
-      res.status(400).json(err);
-    });
+
+router.get("/exercise", (req, res) => {
+    res.sendFile(path.join(__dirname, "../public/exercise.html"));
 });
 
-router.get("/api/transaction", (req, res) => {
-  Transaction.find({})
-    .sort({ date: -1 })
-    .then(dbTransaction => {
-      res.json(dbTransaction);
-    })
-    .catch(err => {
-      res.status(400).json(err);
-    });
+
+router.get("/stats", (req, res) => {
+    res.sendFile(path.join(__dirname, "../public/stats.html"));
 });
+
+
+//API routes
+
+router.post('/workouts', async(req, res) => {
+  try {
+      let result = await Workout.create({});
+      res.status(200).json(result);
+  } catch (err) {
+      res.status(500).json(err);
+  }
+});
+
+router.put('/workouts/:id', async(req, res) => {
+  try {
+      let { body } = req;
+      let { id } = req.params;
+      let result = await Workout.findByIdAndUpdate(id, { $push: { exercises: body } }, { new: true, runValidators: true })
+      res.status(200).json(result);
+  } catch (err) {
+      res.status(500).json(err);
+  }
+});
+
+router.delete('/workouts', async(req, res) => {
+  try {
+      let { id } = req.body
+      let result = Workout.findByIdAndDelete(id)
+      res.status(200).json(result);
+  } catch (err) {
+      res.status(500).json(err);
+  }
+});
+// .aggregate() is a robost version of .find()
+router.get('/workouts', async(req, res) => {
+  try {
+      let result = await Workout.aggregate([
+          { $addFields: { totalDuration: { $sum: '$exercises.duration', }, }, },
+      ])
+      res.status(200).json(result);
+  } catch (err) {
+      res.status(500).json(err);
+  }
+});
+
 
 module.exports = router;
